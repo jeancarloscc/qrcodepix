@@ -1,146 +1,122 @@
-"""Construção do payload PIX (EMV / BR Code).
-Responsabilidade única: montar o payload a partir de parâmetros bem validados.
-"""
-from typing import Optional
-from .crc16 import crc16_ccitt
-import unicodedata
+import qrcode
+from typing import Optional, Tuple
 
+POLY = 0x1021
+INIT = 0xFFFF
 
-def _emv_field(tag: str, value: str) -> str:
-    length = len(value.encode("utf-8"))
-    return f"{tag}{length:02d}{value}"
+def crc16(payload_bytes: bytes) -> str:
+    """CRC-16/CCITT (polynomial 0x1021, init 0xFFFF). Retorna 4 hex maiúsculo."""
+    crc = INIT
+    for b in payload_bytes:
+        crc ^= (b << 8)
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = ((crc << 1) ^ POLY) & 0xFFFF
+            else:
+                crc = (crc << 1) & 0xFFFF
+    return f"{crc:04X}"
 
+def _emv_field_bytes(tag: str, value: str) -> bytes:
+    """Retorna bytes do campo tag+len(2d em bytes)+value(utf-8)."""
+    v_bytes = value.encode("utf-8")
+    length = len(v_bytes)
+    return f"{tag}{length:02d}".encode("utf-8") + v_bytes
 
-def _strip_accents_and_upper(value: str) -> str:
-    """Remove diacritics and convert to upper-case ASCII-ish characters.
+def _emv_field_str(tag: str, value: str) -> str:
+    """Auxiliar que retorna string (útil se preferir trabalhar em str)."""
+    return _emv_field_bytes(tag, value).decode("utf-8")
 
-    Keeps basic punctuation and spaces. This reduces the chance of banks
-    rejecting the merchant name/city due to unexpected characters.
-    """
-    if value is None:
-        return ""
-    # Normalize and remove diacritics
-    nfkd = unicodedata.normalize("NFKD", value)
-    ascii_only = nfkd.encode("ASCII", "ignore").decode("ASCII")
-    # Collapse whitespace and uppercase
-    return " ".join(ascii_only.split()).upper()
-
-
-def _truncate_by_bytes(value: str, max_bytes: int) -> str:
-    """Truncate a string so its UTF-8 encoding is at most max_bytes long.
-
-    Prevents splitting multi-byte characters.
-    """
-    if value is None:
-        return ""
-    encoded = b""
-    out_chars = []
-    for ch in value:
-        ch_enc = ch.encode("utf-8")
-        if len(encoded) + len(ch_enc) > max_bytes:
-            break
-        encoded += ch_enc
-        out_chars.append(ch)
-    return "".join(out_chars)
-
-
-def _normalize_amount(amount: Optional[str]) -> Optional[str]:
-    """Normaliza o valor monetário para ter sempre 2 casas decimais."""
-    if amount is None:
-        return None
-    try:
-        # Remove qualquer caractere não numérico exceto ponto
-        clean = ''.join(c for c in amount if c.isdigit() or c == '.')
-        # Converte para float e formata com 2 casas decimais
-        return f"{float(clean):.2f}"
-    except ValueError:
-        raise ValueError("amount deve ser um valor numérico válido")
-
-
-def _normalize_pix_key(pix_key: str) -> str:
-    """Normaliza a chave PIX removendo espaços e caracteres especiais."""
-    if not pix_key:
-        raise ValueError("pix_key é obrigatório")
-
-    # Remove espaços e converte para minúsculas
-    clean_key = ''.join(pix_key.split()).lower()
-
-    # Se for telefone, garante formato +55
-    if clean_key.isdigit() and len(clean_key) == 11:
-        return f"+55{clean_key}"
-
-    # Se for CPF/CNPJ, remove pontuação
-    if any(c in clean_key for c in '.-/'):
-        nums = ''.join(c for c in clean_key if c.isdigit())
-        if len(nums) in (11, 14):  # CPF ou CNPJ
-            return nums
-
-    return clean_key
-
-
-def build_pix_payload(
-    pix_key: str,
+def create_pix_payload(
+    chave_pix: str,
     merchant_name: str,
     merchant_city: str,
-    amount: Optional[str] = None,
+    valor: Optional[float] = None,
     txid: Optional[str] = None,
     description: Optional[str] = None,
     dynamic: bool = False,
 ) -> str:
-    """Retorna o BR Code completo (string) pronto para gerar QR.
-
-    - pix_key: chave PIX (email/phone/CPF/EVP)
-    - merchant_name: até 25 bytes UTF-8 (será truncado)
-    - merchant_city: até 15 bytes UTF-8 (será truncado)
-    - amount: string no formato '10.00' ou None
-    - txid: até 25 chars; se None => txid vazio
-    - description: texto opcional (será normalizado)
-    - dynamic: True => Point of Initiation Method = '12' (dinâmico)
     """
-    # Validações e normalizações
-    pix_key = _normalize_pix_key(pix_key)
-    amount = _normalize_amount(amount)
+    Constrói BR Code completo e válido (com CRC).
+    Retorna a string final (com CRC) pronta para gerar QR.
+    """
+    if not chave_pix:
+        raise ValueError("chave_pix é obrigatório")
+    if valor is not None and valor < 0:
+        raise ValueError("valor não pode ser negativo")
 
-    payload = []
-    payload.append(_emv_field("00", "01"))
-    payload.append(_emv_field("01", "12" if dynamic else "11"))
+    parts = []
 
-    # Merchant Account Info (26) - GUI e chave PIX
+    # 00 - Payload Format Indicator
+    parts.append(_emv_field_bytes("00", "01"))
+    # 01 - Point of initiation
+    parts.append(_emv_field_bytes("01", "12" if dynamic else "11"))
+
+    # 26 - Merchant Account Information (subfields)
+    # subfield 00 = GUI (BR.GOV.BCB.PIX)
     mai = []
-    mai.append(_emv_field("00", "BR.GOV.BCB.PIX"))
-    mai.append(_emv_field("01", pix_key))
+    mai.append(_emv_field_bytes("00", "BR.GOV.BCB.PIX"))
+    # subfield 01 = chave PIX
+    mai.append(_emv_field_bytes("01", chave_pix))
+    # opcional: subfield 02 = description (por ex. referencia humana)
     if description:
-        # Normaliza e trunca a descrição também
-        desc_norm = _strip_accents_and_upper(description)
-        desc_trunc = _truncate_by_bytes(desc_norm, 50)  # limite arbitrário
-        mai.append(_emv_field("02", desc_trunc))
-    mai_concat = "".join(mai)
-    payload.append(_emv_field("26", mai_concat))
+        mai.append(_emv_field_bytes("02", description))
+    mai_concat = b"".join(mai)
+    parts.append(f"26{len(mai_concat):02d}".encode("utf-8") + mai_concat)
 
-    # Campos obrigatórios na ordem correta
-    payload.append(_emv_field("52", "0000"))  # Merchant Category Code
-    # Transaction Currency (986 = BRL)
-    payload.append(_emv_field("53", "986"))
-    if amount is not None:
-        payload.append(_emv_field("54", amount))  # Transaction Amount
+    # 52 Merchant Category Code
+    parts.append(_emv_field_bytes("52", "0000"))
+    # 53 Currency
+    parts.append(_emv_field_bytes("53", "986"))
+    # 54 Amount (opcional) - formato: no símbolo, com ponto, ex: 10.00
+    if valor is not None:
+        amount_str = f"{valor:.2f}"
+        parts.append(_emv_field_bytes("54", amount_str))
 
-    payload.append(_emv_field("58", "BR"))
-    # Normalize and truncate by BYTES (25 and 15 respectively) to follow EMV rules
-    merchant_name_norm = _strip_accents_and_upper(merchant_name)
-    merchant_city_norm = _strip_accents_and_upper(merchant_city)
-    payload.append(_emv_field(
-        "59", _truncate_by_bytes(merchant_name_norm, 25)))
-    payload.append(_emv_field(
-        "60", _truncate_by_bytes(merchant_city_norm, 15)))
+    # 58 Country
+    parts.append(_emv_field_bytes("58", "BR"))
+    # 59 Merchant name (<=25 bytes) - truncar por bytes se necessário
+    name_bytes = merchant_name.encode("utf-8")[:25]
+    parts.append(f"59{len(name_bytes):02d}".encode("utf-8") + name_bytes)
+    # 60 Merchant city (<=15 bytes)
+    city_bytes = merchant_city.encode("utf-8")[:15]
+    parts.append(f"60{len(city_bytes):02d}".encode("utf-8") + city_bytes)
 
-    # Additional Data (62)
-    txid_value = txid if txid is not None else ""
-    add = _emv_field("05", txid_value)
-    payload.append(_emv_field("62", add))
+    # 62 - Additional Data Field Template (txid subfield 05)
+    tx = txid if txid is not None else ""
+    sub_62 = _emv_field_bytes("05", tx)
+    parts.append(f"62{len(sub_62):02d}".encode("utf-8") + sub_62)
 
-    # CRC
-    without_crc = "".join(payload) + "6304"
-    crc = crc16_ccitt(without_crc.encode("utf-8"))
-    payload.append(_emv_field("63", crc))
+    # montando tudo em bytes e calculando CRC sobre bytes + "6304"
+    payload_bytes_no_crc = b"".join(parts) + b"6304"
+    crc = crc16(payload_bytes_no_crc)
+    full = payload_bytes_no_crc + crc.encode("utf-8")
+    return full.decode("utf-8")
 
-    return "".join(payload)
+def generate_pix_qrcode(chave_pix: str, merchant_name: str, merchant_city: str,
+                        valor: Optional[float] = None, txid: Optional[str] = None,
+                        description: Optional[str] = None, output_path="qrcode_pix.png") -> str:
+    payload = create_pix_payload(
+        chave_pix=chave_pix,
+        merchant_name=merchant_name,
+        merchant_city=merchant_city,
+        valor=valor,
+        txid=txid,
+        description=description
+    )
+    # sanity check: recalcula CRC e compara
+    # recalcula CRC sobre payload até '6304'
+    idx = payload.rfind("63")
+    if idx == -1:
+        raise RuntimeError("Payload mal formado (sem 63 CRC).")
+    without_crc = payload[:idx] + "6304"
+    check_crc = crc16(without_crc.encode("utf-8"))
+    given_crc = payload[idx+4: idx+8] if len(payload) >= idx+8 else None
+    if check_crc != given_crc:
+        raise RuntimeError(f"CRC mismatch: calculado={check_crc} inserido={given_crc}")
+
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr.add_data(payload)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    img.save(output_path)
+    return output_path
