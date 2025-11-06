@@ -120,7 +120,7 @@ def process_form(key: str, name: str, city: str, amount: str, txid: str, desc: s
         amount_norm = amount.replace(',', '.') if amount else None
 
         payload = build_pix_payload(
-            chave_pix=key,
+            chave_pix=key,  # Corrigido para usar o nome correto do argumento
             merchant_name=name,
             merchant_city=city,
             valor=amount_norm,
