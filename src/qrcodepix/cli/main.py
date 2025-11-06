@@ -26,10 +26,10 @@ def parse_args():
 def main():
     args = parse_args()
     payload = build_pix_payload(
-        pix_key=args.key,
+        chave_pix=args.key,
         merchant_name=args.name,
         merchant_city=args.city,
-        amount=args.amount,
+        valor=float(args.amount) if args.amount else None,
         txid=args.txid,
         description=args.desc,
     )
