@@ -130,10 +130,10 @@ def process_form(key: str, name: str, city: str, amount: str, txid: str, desc: s
     validate_form_input(key, name, city, amount)
 
     try:
-        amount_norm = amount.replace(',', '.') if amount else None
+        amount_norm = float(amount.replace(',', '.')) if amount else None
 
         payload = build_pix_payload(
-            chave_pix=key,  # Corrigido para usar o nome correto do argumento
+            chave_pix=key,
             merchant_name=name,
             merchant_city=city,
             valor=amount_norm,
