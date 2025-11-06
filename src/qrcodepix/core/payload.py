@@ -30,7 +30,7 @@ def _emv_field_str(tag: str, value: str) -> str:
     return _emv_field_bytes(tag, value).decode("utf-8")
 
 
-def create_pix_payload(
+def build_pix_payload(
     chave_pix: str,
     merchant_name: str,
     merchant_city: str,
@@ -100,7 +100,7 @@ def create_pix_payload(
 def generate_pix_qrcode(chave_pix: str, merchant_name: str, merchant_city: str,
                         valor: Optional[float] = None, txid: Optional[str] = None,
                         description: Optional[str] = None, output_path="qrcode_pix.png") -> str:
-    payload = create_pix_payload(
+    payload = build_pix_payload(
         chave_pix=chave_pix,
         merchant_name=merchant_name,
         merchant_city=merchant_city,
