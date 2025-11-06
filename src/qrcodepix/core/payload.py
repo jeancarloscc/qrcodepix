@@ -4,6 +4,7 @@ from typing import Optional, Tuple
 POLY = 0x1021
 INIT = 0xFFFF
 
+
 def crc16(payload_bytes: bytes) -> str:
     """CRC-16/CCITT (polynomial 0x1021, init 0xFFFF). Retorna 4 hex maiúsculo."""
     crc = INIT
@@ -16,15 +17,18 @@ def crc16(payload_bytes: bytes) -> str:
                 crc = (crc << 1) & 0xFFFF
     return f"{crc:04X}"
 
+
 def _emv_field_bytes(tag: str, value: str) -> bytes:
     """Retorna bytes do campo tag+len(2d em bytes)+value(utf-8)."""
     v_bytes = value.encode("utf-8")
     length = len(v_bytes)
     return f"{tag}{length:02d}".encode("utf-8") + v_bytes
 
+
 def _emv_field_str(tag: str, value: str) -> str:
     """Auxiliar que retorna string (útil se preferir trabalhar em str)."""
     return _emv_field_bytes(tag, value).decode("utf-8")
+
 
 def create_pix_payload(
     chave_pix: str,
@@ -92,6 +96,7 @@ def create_pix_payload(
     full = payload_bytes_no_crc + crc.encode("utf-8")
     return full.decode("utf-8")
 
+
 def generate_pix_qrcode(chave_pix: str, merchant_name: str, merchant_city: str,
                         valor: Optional[float] = None, txid: Optional[str] = None,
                         description: Optional[str] = None, output_path="qrcode_pix.png") -> str:
@@ -112,7 +117,8 @@ def generate_pix_qrcode(chave_pix: str, merchant_name: str, merchant_city: str,
     check_crc = crc16(without_crc.encode("utf-8"))
     given_crc = payload[idx+4: idx+8] if len(payload) >= idx+8 else None
     if check_crc != given_crc:
-        raise RuntimeError(f"CRC mismatch: calculado={check_crc} inserido={given_crc}")
+        raise RuntimeError(
+            f"CRC mismatch: calculado={check_crc} inserido={given_crc}")
 
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(payload)
