@@ -1,4 +1,3 @@
-import qrcode
 from typing import Optional, Tuple
 
 POLY = 0x1021
@@ -100,6 +99,8 @@ def build_pix_payload(
 def generate_pix_qrcode(chave_pix: str, merchant_name: str, merchant_city: str,
                         valor: Optional[float] = None, txid: Optional[str] = None,
                         description: Optional[str] = None, output_path="qrcode_pix.png") -> str:
+    import qrcode
+
     payload = build_pix_payload(
         chave_pix=chave_pix,
         merchant_name=merchant_name,

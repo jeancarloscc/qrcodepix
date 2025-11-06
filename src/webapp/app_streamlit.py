@@ -136,7 +136,7 @@ def process_form(key: str, name: str, city: str, amount: str, txid: str, desc: s
             chave_pix=key,
             merchant_name=name,
             merchant_city=city,
-            valor=amount_norm,
+            valor=amount_norm or None,
             txid=txid or None,
             description=desc or None,
         )
