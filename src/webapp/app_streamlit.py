@@ -4,6 +4,7 @@ Interface web para geração de QR Codes PIX usando Streamlit.
 import re
 import io
 import zipfile
+import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Optional, Tuple
@@ -68,8 +69,10 @@ def generate_qr(payload: str) -> Tuple[Path, Path]:
             output_dir.mkdir(exist_ok=True)
             persistent_png = output_dir / png_path.name
             persistent_svg = output_dir / svg_path.name
-            png_path.replace(persistent_png)
-            svg_path.replace(persistent_svg)
+
+            # Usar shutil.copy em vez de Path.replace para copiar entre diferentes filesystems
+            shutil.copy(png_path, persistent_png)
+            shutil.copy(svg_path, persistent_svg)
 
             return persistent_png, persistent_svg
         except Exception as e:
