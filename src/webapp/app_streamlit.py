@@ -58,7 +58,20 @@ def generate_qr(payload: str) -> Tuple[Path, Path]:
         try:
             png_path, svg_path = save_qr_files(
                 payload, filename_base=str(base))
-            return png_path, svg_path
+
+            # Converter os caminhos retornados para objetos Path
+            png_path = Path(png_path)
+            svg_path = Path(svg_path)
+
+            # Copiar arquivos para um local persistente
+            output_dir = Path("output")
+            output_dir.mkdir(exist_ok=True)
+            persistent_png = output_dir / png_path.name
+            persistent_svg = output_dir / svg_path.name
+            png_path.replace(persistent_png)
+            svg_path.replace(persistent_svg)
+
+            return persistent_png, persistent_svg
         except Exception as e:
             st.error(f"Erro ao gerar QR: {str(e)}")
             st.stop()
