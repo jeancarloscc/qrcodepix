@@ -9,7 +9,7 @@ class TestPixPayload(unittest.TestCase):
     def test_email_pix_key(self):
         """Testa geração de payload com chave PIX tipo email."""
         payload = build_pix_payload(
-            pix_key="teste@email.com",
+            chave_pix="teste@email.com",
             merchant_name="LOJA TESTE",
             merchant_city="SAO PAULO",
             amount="10.00",
@@ -23,7 +23,7 @@ class TestPixPayload(unittest.TestCase):
     def test_cpf_pix_key(self):
         """Testa geração de payload com chave PIX tipo CPF."""
         payload = build_pix_payload(
-            pix_key="123.456.789-09",  # Com pontuação
+            chave_pix="123.456.789-09",  # Com pontuação
             merchant_name="José da Silva",  # Com acento
             merchant_city="São Paulo",    # Com acento
             amount="15.99",
@@ -36,7 +36,7 @@ class TestPixPayload(unittest.TestCase):
     def test_phone_pix_key(self):
         """Testa geração de payload com chave PIX tipo telefone."""
         payload = build_pix_payload(
-            pix_key="11999999999",  # Sem +55
+            chave_pix="11999999999",  # Sem +55
             merchant_name="LOJA & CIA",  # Com &
             merchant_city="RIO DE JANEIRO",
             amount="1500.00",
@@ -50,7 +50,7 @@ class TestPixPayload(unittest.TestCase):
         """Testa validação de valor inválido."""
         with self.assertRaises(ValueError):
             build_pix_payload(
-                pix_key="teste@email.com",
+                chave_pix="teste@email.com",
                 merchant_name="LOJA TESTE",
                 merchant_city="SAO PAULO",
                 amount="invalid",
@@ -59,7 +59,7 @@ class TestPixPayload(unittest.TestCase):
     def test_description_with_special_chars(self):
         """Testa descrição com caracteres especiais."""
         payload = build_pix_payload(
-            pix_key="teste@email.com",
+            chave_pix="teste@email.com",
             merchant_name="LOJA TESTE",
             merchant_city="SAO PAULO",
             amount="10.00",
@@ -71,7 +71,7 @@ class TestPixPayload(unittest.TestCase):
         """Testa truncamento do nome do merchant."""
         long_name = "NOME MUITO LONGO QUE DEVE SER TRUNCADO"
         payload = build_pix_payload(
-            pix_key="teste@email.com",
+            chave_pix="teste@email.com",
             merchant_name=long_name,
             merchant_city="SAO PAULO",
             amount="10.00",
@@ -82,7 +82,7 @@ class TestPixPayload(unittest.TestCase):
     def test_dynamic_pix(self):
         """Testa geração de PIX dinâmico."""
         payload = build_pix_payload(
-            pix_key="teste@email.com",
+            chave_pix="teste@email.com",
             merchant_name="LOJA TESTE",
             merchant_city="SAO PAULO",
             amount="10.00",
