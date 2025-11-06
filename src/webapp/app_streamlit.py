@@ -65,14 +65,14 @@ def generate_qr(payload: str) -> Tuple[Path, Path]:
             svg_path = Path(svg_path)
 
             # Copiar arquivos para um local persistente
-            output_dir = Path("output")
+            output_dir = Path("output").resolve()
             output_dir.mkdir(exist_ok=True)
             persistent_png = output_dir / png_path.name
             persistent_svg = output_dir / svg_path.name
 
-            # Usar shutil.copy em vez de Path.replace para copiar entre diferentes filesystems
-            shutil.copy(png_path, persistent_png)
-            shutil.copy(svg_path, persistent_svg)
+            # Usar shutil.copy2 para copiar arquivos entre diferentes filesystems
+            shutil.copy2(str(png_path), str(persistent_png))
+            shutil.copy2(str(svg_path), str(persistent_svg))
 
             return persistent_png, persistent_svg
         except Exception as e:
