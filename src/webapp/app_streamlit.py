@@ -9,7 +9,7 @@ import zipfile
 import io
 
 # importe do seu pacote modularizado
-from qrcodepix.core.payload import build_pix_payload
+from qrcodepix.core.payload import create_pix_payload
 from qrcodepix.generator.qr import save_qr_files
 
 st.set_page_config(page_title="Gerador PIX QR", layout="centered")
@@ -25,6 +25,7 @@ with st.form("pix_form"):
     desc = st.text_input("Descrição (opcional)", "")
     submitted = st.form_submit_button("Gerar")
 
+
 def make_zip_bytes(png_path: str, svg_path: str, zip_name: str = "pix_qr_files.zip") -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
@@ -33,17 +34,18 @@ def make_zip_bytes(png_path: str, svg_path: str, zip_name: str = "pix_qr_files.z
     buf.seek(0)
     return buf.read()
 
+
 if submitted:
     # validação simples
     if not key or not name or not city:
         st.error("Campos obrigatórios: chave, nome e cidade.")
     else:
         try:
-            payload = build_pix_payload(
-                pix_key=key,
+            payload = create_pix_payload(
+                chave_pix=key,
                 merchant_name=name,
                 merchant_city=city,
-                amount=amount or None,
+                valor=amount or None,
                 txid=txid or None,
                 description=desc or None,
             )
@@ -53,21 +55,27 @@ if submitted:
             with st.spinner("Gerando QR..."):
                 with TemporaryDirectory() as tmpdir:
                     base = Path(tmpdir) / "pix_qr"
-                    png_path, svg_path = save_qr_files(payload, filename_base=str(base))
+                    png_path, svg_path = save_qr_files(
+                        payload, filename_base=str(base))
                     # mostrar imagem PNG
                     try:
                         from PIL import Image
                         img = Image.open(png_path)
-                        st.image(img, caption="QR PIX (PNG)", use_column_width=False)
+                        st.image(img, caption="QR PIX (PNG)",
+                                 use_container_width=False)
                     except Exception:
-                        st.info("PNG gerado — não foi possível exibir (Pillow ausente).")
+                        st.info(
+                            "PNG gerado — não foi possível exibir (Pillow ausente).")
                     # botão de download do PNG
                     with open(png_path, "rb") as f:
-                        st.download_button("Baixar PNG", data=f.read(), file_name=Path(png_path).name, mime="image/png")
+                        st.download_button("Baixar PNG", data=f.read(
+                        ), file_name=Path(png_path).name, mime="image/png")
                     # botão de download do SVG
                     with open(svg_path, "rb") as f:
-                        st.download_button("Baixar SVG", data=f.read(), file_name=Path(svg_path).name, mime="image/svg+xml")
+                        st.download_button("Baixar SVG", data=f.read(), file_name=Path(
+                            svg_path).name, mime="image/svg+xml")
                     # ZIP com ambos
                     zip_bytes = make_zip_bytes(png_path, svg_path)
-                    st.download_button("Baixar ZIP (PNG + SVG)", data=zip_bytes, file_name="pix_qr_files.zip", mime="application/zip")
+                    st.download_button("Baixar ZIP (PNG + SVG)", data=zip_bytes,
+                                       file_name="pix_qr_files.zip", mime="application/zip")
             st.success("Pronto.")
