@@ -1,4 +1,4 @@
-# PIX QR Generator
+# 🏦 PIX QR Code Generator
 
 ![GitHub repo size](https://img.shields.io/github/repo-size/jeancarloscc/qrcodepix?style=for-the-badge)
 ![GitHub language count](https://img.shields.io/github/languages/count/jeancarloscc/qrcodepix?style=for-the-badge)
@@ -6,23 +6,23 @@
 ![GitHub open issues](https://img.shields.io/github/issues/jeancarloscc/qrcodepix?style=for-the-badge)
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/jeancarloscc/qrcodepix?style=for-the-badge)
 
-<img src="docs/example.png" alt="Exemplo de QR Code gerado" width="400">
 
-> Gere QR Codes PIX prontos para uso em segundos — direto do seu código ou pelo navegador.
-> Uma ferramenta prática, moderna e gratuita para quem deseja automatizar pagamentos, criar integrações financeiras ou oferecer soluções de cobrança digital com facilidade.
-> Ideal para desenvolvedores, empreendedores e equipes que buscam agilidade sem depender de plataformas externas.
+> 🚀 Gere QR Codes PIX válidos e prontos para uso em segundos — direto do seu código, linha de comando ou através de uma interface web moderna.
 
----
+**Perfeito para:**
+- 💼 Desenvolvedores que precisam integrar pagamentos PIX
+- 🏪 Empreendedores criando soluções de cobrança
+- 🔧 Automação de processos financeiros
+- 📱 Aplicações que necessitam de QR Codes dinâmicos
 
-### 🚧 Ajustes e melhorias
-
-O projeto ainda está em desenvolvimento. As próximas atualizações incluirão:
-
-- [x] Geração de QR Code em PNG e SVG  
-- [x] CLI (linha de comando) funcional  
-- [x] Versão web em Flask  
-- [ ] Integração com banco de dados para histórico de pagamentos  
-- [ ] Interface web aprimorada com Bootstrap  
+**Diferenciais:**
+- ✅ Interface web intuitiva com Streamlit
+- ✅ Geração de PNG e SVG em alta qualidade
+- ✅ Suporte a valores fixos ou livres
+- ✅ CLI completa para automações
+- ✅ Validação automática de chaves PIX
+- ✅ Controle de tamanho do QR Code
+- ✅ 100% compatível com o padrão BR Code do Banco Central
 
 ---
 
@@ -38,49 +38,139 @@ Antes de começar, verifique se você possui:
 
 ## 🚀 Instalando PIX QR Generator
 
-Clone o repositório e instale as dependências:
+### Instalação via pip (Recomendado)
+
+```bash
+pip install -e .
+```
+
+### Ou clone o repositório
 
 ```bash
 git clone https://github.com/jeancarloscc/qrcodepix.git
 cd qrcodepix
 pip install -r requirements.txt
-````
+```
+
+### Dependências
+
+O projeto utiliza as seguintes bibliotecas principais:
+
+- **Streamlit** - Interface web moderna e interativa
+- **Segno** - Geração de QR Codes (PNG e SVG)
+- **Pillow** - Processamento de imagens (fallback)
+
+Para instalar todas as dependências:
+
+```bash
+pip install streamlit segno pillow
+```
 
 ---
 
 ## ☕ Usando o projeto
 
-### 🔹 Linha de comando (CLI)
+### 🌐 Interface Web com Streamlit (Recomendado)
+
+A forma mais fácil e intuitiva de usar o projeto:
+
+```bash
+streamlit run src/webapp/app_streamlit.py
+```
+
+Acesse no navegador: � [http://localhost:8501](http://localhost:8501)
+
+**Recursos da interface:**
+- ✅ Seleção de tipo de chave PIX (Email, Telefone, CPF/CNPJ, Chave Aleatória)
+- ✅ Exemplos dinâmicos para cada tipo de chave
+- ✅ Controle de tamanho do QR Code (escala de 5 a 20)
+- ✅ Geração simultânea de PNG e SVG
+- ✅ Download individual ou em arquivo ZIP
+- ✅ Validação automática de campos
+- ✅ QR Codes com ou sem valor definido
+
+---
+
+### �🔹 Linha de comando (CLI)
 
 Gerar um QR Code com valor fixo:
 
 ```bash
-python -m pix_qr.cli.main --key seu_email@exemplo.com --name "NOME" --city "SAO PAULO" --amount 10.00 --txid ABC123 --out minha_saida
+python -m qrcodepix.cli.main --key seuemail@exemplo.com --name "João Silva" --city "Sao Paulo" --amount 10.00 --txid ABC123 --out meu_pix
 ```
 
-Gerar um QR Code **sem valor definido** (opcional):
+Gerar um QR Code **sem valor definido** (pagador escolhe o valor):
 
 ```bash
-python -m pix_qr.cli.main --key seu_email@exemplo.com --name "NOME" --city "SAO PAULO" --txid LIVRE --out pix_sem_valor
+python -m qrcodepix.cli.main --key seuemail@exemplo.com --name "João Silva" --city "Sao Paulo" --out pix_sem_valor
 ```
 
-Os arquivos serão salvos em:
-
-```
-./minha_saida.png
-./minha_saida.svg
-```
-
-### 🔹 Interface Web (Flask)
-
-Execute o servidor local:
+Adicionar descrição opcional:
 
 ```bash
-python -m pix_qr.webapp.app
+python -m qrcodepix.cli.main --key +5511987654321 --name "Maria Santos" --city "Rio de Janeiro" --amount 25.50 --desc "Pagamento de serviço" --out pix_servico
 ```
 
-Acesse no navegador:
-👉 [http://127.0.0.1:5000](http://127.0.0.1:5000)
+Os arquivos serão salvos como:
+
+```
+./meu_pix.png
+./meu_pix.svg
+```
+
+---
+
+### � Usando como biblioteca Python
+
+```python
+from qrcodepix.core.payload import build_pix_payload
+from qrcodepix.generator.qr import save_qr_files
+
+# Gerar o payload PIX
+payload = build_pix_payload(
+    chave_pix="seuemail@exemplo.com",
+    merchant_name="João Silva",
+    merchant_city="Sao Paulo",
+    valor=10.50,  # Opcional - None para valor livre
+    txid="REF123",  # Opcional
+    description="Pagamento"  # Opcional
+)
+
+# Gerar os arquivos QR Code
+png_path, svg_path = save_qr_files(
+    payload, 
+    filename_base="meu_qrcode",
+    scale=10,  # Tamanho (5-20)
+    border=4   # Borda
+)
+
+print(f"Arquivos gerados: {png_path}, {svg_path}")
+```
+
+---
+
+## ✨ Funcionalidades
+
+- 🎯 **Tipos de Chave PIX Suportados:**
+  - 📧 Email
+  - 📱 Telefone (com +55 ou DDD)
+  - 🆔 CPF/CNPJ (com ou sem formatação)
+  - 🔑 Chave Aleatória (EVP/UUID)
+
+- 💰 **Opções de Pagamento:**
+  - Valor fixo definido
+  - Valor livre (pagador escolhe)
+
+- 🎨 **Formatos de Saída:**
+  - PNG em alta resolução
+  - SVG vetorial (ideal para impressão)
+  - Download em ZIP (ambos os formatos)
+
+- 🔧 **Configurações Avançadas:**
+  - Controle de tamanho (scale 5-20)
+  - TXID personalizado
+  - Descrição opcional
+  - Bordas ajustáveis
 
 ---
 
@@ -116,8 +206,8 @@ Agradecimentos aos desenvolvedores que contribuíram com este projeto:
   <tr>
     <td align="center">
       <a href="#" title="Jean - Criador do projeto">
-        <img src="https://avatars.githubusercontent.com/u/1" width="100px;" alt="Foto do Jean"/><br>
-        <sub><b>Jean</b></sub>
+        <img src="https://avatars.githubusercontent.com/u/73586340?v=4" width="100px;" alt="Foto do Jean"/><br>
+        <sub><b>Jean Carlos</b></sub>
       </a>
     </td>
   </tr>
@@ -125,15 +215,17 @@ Agradecimentos aos desenvolvedores que contribuíram com este projeto:
 
 ---
 
-## 😄 Seja um dos contribuidores
+## 💝 Apoie o Projeto
 
-Quer fazer parte desse projeto?
-Leia [CONTRIBUTING.md](CONTRIBUTING.md) e veja como contribuir.
+Se este projeto foi útil para você, considere fazer uma contribuição via PIX:
+
+<div align="center">
+  <img src="output/pix_qr.png" alt="QR Code PIX para doação" width="300">
+  <br>
+  <p><strong>Escaneie o QR Code acima ou use a chave PIX:</strong></p>
+  <p>Sua contribuição ajuda a manter o projeto ativo e em constante evolução! ❤️</p>
+</div>
 
 ---
 
-## 📝 Licença
-
-Este projeto está sob a licença MIT.
-Consulte o arquivo [LICENSE](LICENSE.md) para mais detalhes.
 
