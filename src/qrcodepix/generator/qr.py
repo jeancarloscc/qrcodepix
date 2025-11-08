@@ -13,7 +13,12 @@ def save_qr_files(payload: str, filename_base: str = "pix_qr", scale: int = 8, b
 
         qr = segno.make(payload, micro=False)
         qr.save(png_path, scale=scale, border=border)
-        qr.save(svg_path, border=border)
+
+        # Para SVG, multiplicar scale por 3 para garantir tamanho adequado
+        # SVG renderiza em unidades diferentes, então precisa de scale maior
+        svg_scale = scale * 3
+        qr.save(svg_path, scale=svg_scale, border=border,
+                xmldecl=False, svgclass=None)
         return png_path, svg_path
 
     except Exception:
