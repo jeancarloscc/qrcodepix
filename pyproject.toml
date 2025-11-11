@@ -1,6 +1,6 @@
 [project]
 name = "qrcodepix"
-version = "0.1.0"
+version = "1.1.1"
 description = ""
 authors = [
     {name = "Jean Carlos",email = "jeancc.costa@gmail.com"}
