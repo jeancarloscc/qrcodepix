@@ -1,7 +1,6 @@
 # 🏦 PIX QR Code Generator
 
 ![Version](https://img.shields.io/badge/version-1.1.1-blue?style=for-the-badge)
-![Python](https://img.shields.io/badge/python-3.12+-blue?style=for-the-badge&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![GitHub repo size](https://img.shields.io/github/repo-size/jeancarloscc/qrcodepix?style=for-the-badge)
 ![GitHub language count](https://img.shields.io/github/languages/count/jeancarloscc/qrcodepix?style=for-the-badge)
@@ -123,35 +122,6 @@ Os arquivos serão salvos como:
 
 ---
 
-### � Usando como biblioteca Python
-
-```python
-from qrcodepix.core.payload import build_pix_payload
-from qrcodepix.generator.qr import save_qr_files
-
-# Gerar o payload PIX
-payload = build_pix_payload(
-    chave_pix="seuemail@exemplo.com",
-    merchant_name="João Silva",
-    merchant_city="Sao Paulo",
-    valor=10.50,  # Opcional - None para valor livre
-    txid="REF123",  # Opcional
-    description="Pagamento"  # Opcional
-)
-
-# Gerar os arquivos QR Code
-png_path, svg_path = save_qr_files(
-    payload, 
-    filename_base="meu_qrcode",
-    scale=10,  # Tamanho (5-20)
-    border=4   # Borda
-)
-
-print(f"Arquivos gerados: {png_path}, {svg_path}")
-```
-
----
-
 ## ✨ Funcionalidades
 
 - 🎯 **Tipos de Chave PIX Suportados:**
@@ -229,34 +199,6 @@ Se este projeto foi útil para você, considere fazer uma contribuição via PIX
   <p>Sua contribuição ajuda a manter o projeto ativo e em constante evolução! ❤️</p>
 </div>
 
----
 
-## 📝 Changelog
-
-### [0.1.0] - 2025-11-11
-
-#### ✨ Funcionalidades
-- Interface web moderna com Streamlit
-- Geração de QR Codes em PNG e SVG
-- Seleção dinâmica de tipo de chave PIX
-- Controle de tamanho do QR Code (scale 5-20)
-- Validação automática de campos
-- Download individual ou em ZIP
-
-#### 🔧 Melhorias
-- Normalização automática de texto (remove acentos)
-- Normalização de chaves PIX:
-  - Telefone: adiciona +55 automaticamente
-  - CPF/CNPJ: remove formatação, preserva zeros à esquerda
-  - Email: converte para minúsculas
-- Conformidade 100% com Manual do Banco Central
-- Implementação completa do padrão EMV
-
-#### 🏗️ Estrutura
-- CLI para automações
-- API Python para integração
-- Documentação completa
-
----
 
 
