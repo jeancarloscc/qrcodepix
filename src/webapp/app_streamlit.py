@@ -1,23 +1,33 @@
 """
 Interface web para geração de QR Codes PIX usando Streamlit.
 """
-import re
 import io
+import re
 import zipfile
-import shutil
-from pathlib import Path
 from tempfile import TemporaryDirectory
+from pathlib import Path
 from typing import Optional, Tuple
 
 import streamlit as st
-from qrcodepix.core.payload import build_pix_payload
+from qrcodepix.core.payload import build_pix_payload, validar_cpf, validar_cnpj
 from qrcodepix.generator.qr import save_qr_files
 
+KEY_TYPE_TO_TIPO_CHAVE = {
+    "Email": "email",
+    "Telefone": "telefone",
+    "CPF/CNPJ": "documento",
+    "Chave Aleatória (EVP)": "evp",
+}
 
-def validate_cpf(cpf: str) -> bool:
-    """Valida o formato do CPF."""
-    cpf = re.sub(r'[^0-9]', '', cpf)
-    return len(cpf) == 11
+
+def validate_documento(documento: str) -> bool:
+    """Valida CPF (11 dígitos) ou CNPJ (14 dígitos) pelo dígito verificador."""
+    numeros = re.sub(r'[^0-9]', '', documento)
+    if len(numeros) == 11:
+        return validar_cpf(numeros)
+    if len(numeros) == 14:
+        return validar_cnpj(numeros)
+    return False
 
 
 def validate_phone(phone: str) -> bool:
@@ -42,85 +52,74 @@ def validate_amount(amount: str) -> bool:
         return False
 
 
-def make_zip_bytes(png_path: Path, svg_path: Path) -> bytes:
-    """Cria um arquivo ZIP com PNG e SVG."""
+def make_zip_bytes(png_bytes: bytes, svg_bytes: bytes) -> bytes:
+    """Cria um arquivo ZIP com PNG e SVG em memória."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.write(png_path, arcname=png_path.name)
-        zf.write(svg_path, arcname=svg_path.name)
+        zf.writestr("pix_qr.png", png_bytes)
+        zf.writestr("pix_qr.svg", svg_bytes)
     buf.seek(0)
     return buf.read()
 
 
-def generate_qr(payload: str, scale: int = 8) -> Tuple[Path, Path]:
-    """Gera arquivos QR code PNG e SVG."""
+def generate_qr(payload: str, scale: int = 8) -> Tuple[bytes, bytes]:
+    """Gera o QR code em um diretório temporário e retorna os bytes de PNG e SVG.
+
+    Não persiste nada fora do diretório temporário: um servidor Streamlit
+    compartilhado não deve acumular arquivos com chaves PIX de outros usuários
+    em um diretório de saída permanente.
+    """
     with TemporaryDirectory() as tmpdir:
         base = Path(tmpdir) / "pix_qr"
         try:
             png_path, svg_path = save_qr_files(
                 payload, filename_base=str(base), scale=scale)
-
-            # Converter os caminhos retornados para objetos Path
-            png_path = Path(png_path)
-            svg_path = Path(svg_path)
-
-            # Copiar arquivos para um local persistente
-            output_dir = Path("output").resolve()
-            output_dir.mkdir(exist_ok=True)
-            persistent_png = output_dir / png_path.name
-            persistent_svg = output_dir / svg_path.name
-
-            # Usar shutil.copy2 para copiar arquivos entre diferentes filesystems
-            shutil.copy2(str(png_path), str(persistent_png))
-            shutil.copy2(str(svg_path), str(persistent_svg))
-
-            return persistent_png, persistent_svg
+            png_bytes = Path(png_path).read_bytes()
+            svg_bytes = Path(svg_path).read_bytes()
+            return png_bytes, svg_bytes
         except Exception as e:
             st.error(f"Erro ao gerar QR: {str(e)}")
             st.stop()
 
 
-def show_qr_downloads(png_path: Path, svg_path: Path) -> None:
+def show_qr_downloads(png_bytes: bytes, svg_bytes: bytes) -> None:
     """Exibe o QR code e cria botões de download."""
     try:
         from PIL import Image
-        img = Image.open(png_path)
+        img = Image.open(io.BytesIO(png_bytes))
         st.image(img, caption="QR PIX (PNG)", width='stretch')
     except ImportError:
         st.info("PNG gerado — não foi possível exibir (Pillow ausente).")
 
-    with open(png_path, "rb") as f:
-        st.download_button("Baixar PNG", data=f.read(),
-                           file_name=png_path.name, mime="image/png")
+    st.download_button("Baixar PNG", data=png_bytes,
+                       file_name="pix_qr.png", mime="image/png")
 
-    with open(svg_path, "rb") as f:
-        st.download_button("Baixar SVG", data=f.read(),
-                           file_name=svg_path.name, mime="image/svg+xml")
+    st.download_button("Baixar SVG", data=svg_bytes,
+                       file_name="pix_qr.svg", mime="image/svg+xml")
 
-    zip_bytes = make_zip_bytes(png_path, svg_path)
+    zip_bytes = make_zip_bytes(png_bytes, svg_bytes)
     st.download_button("Baixar ZIP (PNG + SVG)", data=zip_bytes,
                        file_name="pix_qr_files.zip", mime="application/zip")
 
 
-def validate_form_input(key: str, name: str, city: str, amount: Optional[str]) -> None:
-    """Valida todos os campos do formulário."""
+def validate_form_input(key_type: str, key: str, name: str, city: str, amount: Optional[str]) -> None:
+    """Valida todos os campos do formulário de acordo com o tipo de chave selecionado."""
     if not key or not name or not city:
         st.error("Campos obrigatórios: chave, nome e cidade.")
         st.stop()
 
-    # Validar chave PIX
-    if '@' in key:
+    if key_type == "Email":
         if not validate_email(key):
             st.error("Formato de email inválido")
             st.stop()
-    elif key.isdigit() or '+' in key:
+    elif key_type == "Telefone":
         if not validate_phone(key):
             st.error(
                 "Formato de telefone inválido. Use: +5511999999999 ou 11999999999")
             st.stop()
-    elif re.sub(r'[^0-9]', '', key).isdigit():
-        if not validate_cpf(key):
-            st.error("Formato de CPF inválido")
+    elif key_type == "CPF/CNPJ":
+        if not validate_documento(key):
+            st.error("CPF/CNPJ inválido (dígito verificador incorreto)")
             st.stop()
 
     if amount and not validate_amount(amount):
@@ -128,9 +127,10 @@ def validate_form_input(key: str, name: str, city: str, amount: Optional[str]) -
         st.stop()
 
 
-def process_form(key: str, name: str, city: str, amount: str, txid: str, desc: str, scale: int) -> None:
+def process_form(key_type: str, key: str, name: str, city: str, amount: str,
+                 txid: str, desc: str, scale: int) -> None:
     """Processa o formulário e gera o QR code."""
-    validate_form_input(key, name, city, amount)
+    validate_form_input(key_type, key, name, city, amount)
 
     try:
         amount_norm = float(amount.replace(',', '.')) if amount else None
@@ -142,6 +142,7 @@ def process_form(key: str, name: str, city: str, amount: str, txid: str, desc: s
             valor=amount_norm or None,
             txid=txid or None,
             description=desc or None,
+            tipo_chave=KEY_TYPE_TO_TIPO_CHAVE.get(key_type),
         )
     except ValueError as e:
         st.error(f"Erro de validação: {str(e)}")
@@ -151,8 +152,8 @@ def process_form(key: str, name: str, city: str, amount: str, txid: str, desc: s
         st.stop()
 
     with st.spinner("Gerando QR..."):
-        png_path, svg_path = generate_qr(payload, scale=scale)
-        show_qr_downloads(png_path, svg_path)
+        png_bytes, svg_bytes = generate_qr(payload, scale=scale)
+        show_qr_downloads(png_bytes, svg_bytes)
         st.success("QR Code gerado com sucesso!")
 
 
@@ -182,8 +183,8 @@ def main():
             "help": "Digite o telefone com código do país (+55) ou apenas com DDD"
         },
         "CPF/CNPJ": {
-            "placeholder": "12345678900",
-            "example": "🆔 **Exemplos CPF:** 123.456.789-00 ou 12345678900\n\n**Exemplos CNPJ:** 12.345.678/0001-90 ou 12345678000190",
+            "placeholder": "12345678909",
+            "example": "🆔 **Exemplos CPF:** 123.456.789-09 ou 12345678909\n\n**Exemplos CNPJ:** 11.222.333/0001-81 ou 11222333000181",
             "help": "Digite o CPF ou CNPJ com ou sem formatação"
         },
         "Chave Aleatória (EVP)": {
@@ -230,7 +231,7 @@ def main():
         submitted = st.form_submit_button("Gerar QR Code PIX")
 
     if submitted:
-        process_form(key, name, city, amount, txid, desc, scale)
+        process_form(key_type, key, name, city, amount, txid, desc, scale)
 
 
 if __name__ == "__main__":
