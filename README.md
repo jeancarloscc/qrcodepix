@@ -1,6 +1,6 @@
 # 🏦 PIX QR Code Generator
 
-![Version](https://img.shields.io/badge/version-1.1.1-blue?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.1.2-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![GitHub repo size](https://img.shields.io/github/repo-size/jeancarloscc/qrcodepix?style=for-the-badge)
 ![GitHub language count](https://img.shields.io/github/languages/count/jeancarloscc/qrcodepix?style=for-the-badge)
